@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 interface HomePageProps {
-  onPromptSelect: (prompt: string) => void;
+  onPromptSelect: () => void;
 }
 
 export default function HomePage({ onPromptSelect }: HomePageProps) {
@@ -15,29 +15,30 @@ export default function HomePage({ onPromptSelect }: HomePageProps) {
     "moving" | "thinking" | "ready"
   >("moving");
 
-  // Check if motion permission is needed (only once on mount)
-  const [motionPermissionGranted, setMotionPermissionGranted] = useState(() => {
-    if (typeof window === "undefined") return false;
-    const DeviceMotionEventTyped = DeviceMotionEvent as unknown as {
-      requestPermission?: () => Promise<"granted" | "denied">;
-    };
-    // If no permission needed (non-iOS), grant automatically
-    return !(
-      typeof DeviceMotionEvent !== "undefined" &&
-      typeof DeviceMotionEventTyped.requestPermission === "function"
-    );
-  });
+  // Motion permission states - initialized as false to avoid hydration mismatch
+  const [motionPermissionGranted, setMotionPermissionGranted] = useState(false);
+  const [needsMotionPermission, setNeedsMotionPermission] = useState(false);
 
-  const [needsMotionPermission, setNeedsMotionPermission] = useState(() => {
-    if (typeof window === "undefined") return false;
+  // Check if motion permission is needed (client-side only, after mount)
+  // This must run in useEffect to avoid hydration mismatch between server/client
+  // We intentionally set state here to initialize client-side only values
+  useEffect(() => {
     const DeviceMotionEventTyped = DeviceMotionEvent as unknown as {
       requestPermission?: () => Promise<"granted" | "denied">;
     };
-    return (
+
+    const needsPermission =
       typeof DeviceMotionEvent !== "undefined" &&
-      typeof DeviceMotionEventTyped.requestPermission === "function"
-    );
-  });
+      typeof DeviceMotionEventTyped.requestPermission === "function";
+
+    // eslint-disable-next-line
+    setNeedsMotionPermission(needsPermission);
+
+    // If no permission needed (non-iOS), grant automatically
+    if (!needsPermission) {
+      setMotionPermissionGranted(true);
+    }
+  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -213,9 +214,9 @@ export default function HomePage({ onPromptSelect }: HomePageProps) {
   };
 
   const suggestedPrompts = [
-    "should I eat this?",
-    "what is this?",
-    "pick me sth from the menu",
+    "🤔 Should I eat this?",
+    "🍔 Should I eat this?",
+    "❓ Should I eat this?",
   ];
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -227,9 +228,9 @@ export default function HomePage({ onPromptSelect }: HomePageProps) {
     }
   };
 
-  const handlePromptClick = (prompt: string) => {
-    // Navigate to chat with selected prompt
-    onPromptSelect(prompt);
+  const handlePromptClick = () => {
+    // Navigate to chat
+    onPromptSelect();
   };
 
   return (
@@ -355,7 +356,7 @@ export default function HomePage({ onPromptSelect }: HomePageProps) {
         {suggestedPrompts.map((prompt, index) => (
           <button
             key={index}
-            onClick={() => !isLoading && handlePromptClick(prompt)}
+            onClick={() => !isLoading && handlePromptClick()}
             disabled={isLoading}
             className="px-4 py-2 rounded-2xl bg-white/20 backdrop-blur-md border border-white/40 text-white shadow-lg hover:bg-white/30 active:bg-white/40 transition-all flex items-center gap-2 disabled:cursor-not-allowed"
           >

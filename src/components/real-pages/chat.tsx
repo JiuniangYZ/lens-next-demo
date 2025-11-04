@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface ChatPageProps {
-  initialPrompt: string;
   onBack: () => void;
 }
 
@@ -12,21 +11,78 @@ type Message = {
   content: string;
 };
 
-export default function ChatPage({ initialPrompt, onBack }: ChatPageProps) {
-  // Initialize messages with the initial prompt
-  const [messages, setMessages] = useState<Array<Message>>(() => {
-    return initialPrompt ? [{ role: 'user', content: initialPrompt }] : [];
-  });
+export default function ChatPage({ onBack }: ChatPageProps) {
+  const [messages, setMessages] = useState<Array<Message>>([]);
   const [inputValue, setInputValue] = useState("");
   const [currentCard, setCurrentCard] = useState<'meal' | 'train'>('meal');
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isAiTyping, setIsAiTyping] = useState(false); // Global lock
+  const hasInitialized = useRef(false); // Prevent double initialization
+  const messagesEndRef = useRef<HTMLDivElement>(null); // For auto-scrolling
 
-  const suggestedQuestions = [
-    "🤔 Is this healthy?",
-    "🔄 What are alternatives?",
-    "⚠️ Should I avoid this?",
-    "💪 Plan me a train"
-  ];
+  // Unified message sending function with lock-response-unlock pattern
+  const sendMsg = (userMessage: string, isTrainingRequest: boolean = false) => {
+    if (isAiTyping) return; // Respect the lock
+    
+    // Add user message
+    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setIsAiTyping(true); // 🔒 Lock
+    
+    if (!isTrainingRequest) {
+      // First question: "Should I eat this?"
+      setTimeout(() => {
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: "You can definitely enjoy this Big Mac! 🍔 However, to keep things balanced and maintain your fitness goals, it would be best to follow it up with some training. A good workout will help you burn those extra calories and make the most of that protein. Want me to plan a workout for you?"
+          }
+        ]);
+        setIsAiTyping(false); // 🔓 Unlock
+      }, 1800);
+    } else {
+      // Training request: "Plan me a train"
+      // AI "thinks" before switching card
+      setTimeout(() => {
+        setIsTransitioning(true);
+        setTimeout(() => {
+          setCurrentCard('train');
+          setIsTransitioning(false);
+        }, 300);
+      }, 800);
+      
+      // Add AI response after card transition
+      setTimeout(() => {
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: "Perfect! 💪 I've created a post-meal strength training plan for you. This 45-minute workout will help you burn approximately 350 calories and make the most of that protein from your Big Mac. Focus on proper form and rest 90-120 seconds between sets. Let's get those gains!"
+          }
+        ]);
+        setIsAiTyping(false); // 🔓 Unlock
+      }, 2100);
+    }
+  };
+
+  // Start the conversation flow on mount (only once, not twice in strict mode)
+  useEffect(() => {
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      sendMsg('🤔 Should I eat this?');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  // Dynamic suggestions based on messages length (after AI responds to first question)
+  const suggestedQuestions = messages.length >= 2
+    ? ["💪 Plan me a train"] 
+    : [];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,20 +95,8 @@ export default function ChatPage({ initialPrompt, onBack }: ChatPageProps) {
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    // Check if it's the training plan request
     if (suggestion.includes("Plan me a train")) {
-      // Add user message
-      setMessages([...messages, { role: 'user', content: suggestion }]);
-      // Smooth transition: fade out, switch card, fade in
-      setIsTransitioning(true);
-      setTimeout(() => {
-        setCurrentCard('train');
-        setIsTransitioning(false);
-      }, 300); // Half of the transition duration
-    } else {
-      // Add regular suggestion as user message
-      setMessages([...messages, { role: 'user', content: suggestion }]);
-      // TODO: Handle AI response
+      sendMsg(suggestion, true); // true = training request
     }
   };
 
@@ -247,6 +291,8 @@ export default function ChatPage({ initialPrompt, onBack }: ChatPageProps) {
                 </div>
               </div>
             ))}
+            {/* Invisible element at the bottom for auto-scrolling */}
+            <div ref={messagesEndRef} />
           </div>
         )}
       </div>

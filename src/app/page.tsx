@@ -6,10 +6,8 @@ import ChatPage from '@/components/real-pages/chat';
 
 export default function Home() {
   const [currentScreen, setCurrentScreen] = useState<'home' | 'chat'>('home');
-  const [selectedPrompt, setSelectedPrompt] = useState<string>('');
 
-  const navigateToChat = (prompt: string) => {
-    setSelectedPrompt(prompt);
+  const navigateToChat = () => {
     setCurrentScreen('chat');
   };
 
@@ -20,7 +18,7 @@ export default function Home() {
   return (
     <>
       {currentScreen === 'home' && <HomePage onPromptSelect={navigateToChat} />}
-      {currentScreen === 'chat' && <ChatPage initialPrompt={selectedPrompt} onBack={navigateToHome} />}
+      {currentScreen === 'chat' && <ChatPage onBack={navigateToHome} />}
     </>
   );
 }
