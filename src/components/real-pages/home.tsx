@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import MealLogModal from "@/components/meal-log-modal";
 
 interface HomePageProps {
   onPromptSelect: () => void;
+  onMealLogged: () => void;
 }
 
-export default function HomePage({ onPromptSelect }: HomePageProps) {
+export default function HomePage({ onPromptSelect, onMealLogged }: HomePageProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [inputValue, setInputValue] = useState("");
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -14,6 +16,7 @@ export default function HomePage({ onPromptSelect }: HomePageProps) {
   const [promptStatus, setPromptStatus] = useState<
     "moving" | "thinking" | "ready"
   >("moving");
+  const [isMealLogModalOpen, setIsMealLogModalOpen] = useState(false);
 
   // Motion permission states - initialized as false to avoid hydration mismatch
   const [motionPermissionGranted, setMotionPermissionGranted] = useState(false);
@@ -214,9 +217,9 @@ export default function HomePage({ onPromptSelect }: HomePageProps) {
   };
 
   const suggestedPrompts = [
+    "😤 Log the meal",
     "🤔 Should I eat this?",
-    "🍔 Should I eat this?",
-    "❓ Should I eat this?",
+    "😕 Is this healthy?",
   ];
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -228,9 +231,14 @@ export default function HomePage({ onPromptSelect }: HomePageProps) {
     }
   };
 
-  const handlePromptClick = () => {
-    // Navigate to chat
-    onPromptSelect();
+  const handlePromptClick = (promptIndex: number) => {
+    if (promptIndex === 0) {
+      // First prompt: "Log the meal" - Open modal
+      setIsMealLogModalOpen(true);
+    } else {
+      // Other prompts: Navigate to chat
+      onPromptSelect();
+    }
   };
 
   return (
@@ -353,11 +361,11 @@ export default function HomePage({ onPromptSelect }: HomePageProps) {
 
       {/* Prompt Generation Area - Lower Half */}
       <div className="absolute bottom-29 left-0 right-0 px-4 flex flex-col items-center gap-4">
-        {suggestedPrompts.map((prompt, index) => (
-          <button
-            key={index}
-            onClick={() => !isLoading && handlePromptClick()}
-            disabled={isLoading}
+            {suggestedPrompts.map((prompt, index) => (
+              <button
+                key={index}
+                onClick={() => !isLoading && handlePromptClick(index)}
+                disabled={isLoading}
             className="px-4 py-2 rounded-2xl bg-white/20 backdrop-blur-md border border-white/40 text-white shadow-lg hover:bg-white/30 active:bg-white/40 transition-all flex items-center gap-2 disabled:cursor-not-allowed"
           >
             {isLoading ? (
@@ -384,21 +392,37 @@ export default function HomePage({ onPromptSelect }: HomePageProps) {
             ) : (
               // Prompt content
               <>
-                {/* Lightbulb Icon */}
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M9 18h6" />
-                  <path d="M10 22h4" />
-                  <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1.48.5 2.75 1.5 3.5.76.76 1.23 1.52 1.41 2.5" />
-                </svg>
+                {index === 0 ? (
+                  // Spanner/Wrench icon for "Log the meal" - tool action
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                  </svg>
+                ) : (
+                  // Lightbulb Icon for other prompts - suggestions/ideas
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M9 18h6" />
+                    <path d="M10 22h4" />
+                    <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1.48.5 2.75 1.5 3.5.76.76 1.23 1.52 1.41 2.5" />
+                  </svg>
+                )}
                 {prompt}
               </>
             )}
@@ -438,6 +462,13 @@ export default function HomePage({ onPromptSelect }: HomePageProps) {
           </div>
         </form>
       </div>
+
+      {/* Meal Log Modal */}
+      <MealLogModal
+        isOpen={isMealLogModalOpen}
+        onClose={() => setIsMealLogModalOpen(false)}
+        onMealLogged={onMealLogged}
+      />
     </div>
   );
 }

@@ -69,7 +69,7 @@ export default function ChatPage({ onBack }: ChatPageProps) {
   useEffect(() => {
     if (!hasInitialized.current) {
       hasInitialized.current = true;
-      sendMsg('🤔 Should I eat this?');
+      sendMsg('😤 Log the meal');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
