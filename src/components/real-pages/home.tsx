@@ -17,6 +17,10 @@ export default function HomePage({ onPromptSelect, onMealLogged }: HomePageProps
     "moving" | "thinking" | "ready"
   >("moving");
   const [isMealLogModalOpen, setIsMealLogModalOpen] = useState(false);
+  const [isProcessingMeal, setIsProcessingMeal] = useState(false);
+  const [processingStep, setProcessingStep] = useState<
+    "classifying" | "analyzing" | "loading"
+  >("classifying");
 
   // Motion permission states - initialized as false to avoid hydration mismatch
   const [motionPermissionGranted, setMotionPermissionGranted] = useState(false);
@@ -233,8 +237,25 @@ export default function HomePage({ onPromptSelect, onMealLogged }: HomePageProps
 
   const handlePromptClick = (promptIndex: number) => {
     if (promptIndex === 0) {
-      // First prompt: "Log the meal" - Open modal
-      setIsMealLogModalOpen(true);
+      // First prompt: "Log the meal" - Show loading then open modal
+      setIsProcessingMeal(true);
+      setProcessingStep("classifying");
+      
+      // Step 1: Classifying image (1.5s)
+      setTimeout(() => {
+        setProcessingStep("analyzing");
+        
+        // Step 2: Analyzing nutrition (1.2s)
+        setTimeout(() => {
+          setProcessingStep("loading");
+          
+          // Step 3: Loading info (0.8s)
+          setTimeout(() => {
+            setIsProcessingMeal(false);
+            setIsMealLogModalOpen(true);
+          }, 800);
+        }, 1200);
+      }, 1500);
     } else {
       // Other prompts: Navigate to chat
       onPromptSelect();
@@ -462,6 +483,68 @@ export default function HomePage({ onPromptSelect, onMealLogged }: HomePageProps
           </div>
         </form>
       </div>
+
+      {/* Processing Meal Loading Screen */}
+      {isProcessingMeal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-fade-in">
+          <div className="text-center px-6">
+            {/* Animated Icon */}
+            <div className="mb-6 flex justify-center">
+              <div className="relative">
+                {/* Outer ring */}
+                <div className="w-24 h-24 border-4 border-white/20 rounded-full"></div>
+                {/* Spinning ring */}
+                <div className="absolute inset-0 w-24 h-24 border-4 border-transparent border-t-white rounded-full animate-spin"></div>
+                {/* Center emoji */}
+                <div className="absolute inset-0 flex items-center justify-center text-4xl">
+                  {processingStep === "classifying" && "📸"}
+                  {processingStep === "analyzing" && "🔍"}
+                  {processingStep === "loading" && "📊"}
+                </div>
+              </div>
+            </div>
+
+            {/* Step Text */}
+            <div className="space-y-2">
+              <h3 className="text-2xl font-bold text-white">
+                {processingStep === "classifying" && "Classifying Image..."}
+                {processingStep === "analyzing" && "Analyzing Nutrition..."}
+                {processingStep === "loading" && "Loading Info..."}
+              </h3>
+              <p className="text-sm text-white/70">
+                {processingStep === "classifying" &&
+                  "Identifying food items from camera"}
+                {processingStep === "analyzing" &&
+                  "Calculating nutritional values"}
+                {processingStep === "loading" && "Almost ready!"}
+              </p>
+            </div>
+
+            {/* Progress Dots */}
+            <div className="mt-8 flex justify-center gap-2">
+              <div
+                className={`w-2 h-2 rounded-full transition-all ${
+                  processingStep === "classifying"
+                    ? "bg-white w-8"
+                    : "bg-white/30"
+                }`}
+              ></div>
+              <div
+                className={`w-2 h-2 rounded-full transition-all ${
+                  processingStep === "analyzing"
+                    ? "bg-white w-8"
+                    : "bg-white/30"
+                }`}
+              ></div>
+              <div
+                className={`w-2 h-2 rounded-full transition-all ${
+                  processingStep === "loading" ? "bg-white w-8" : "bg-white/30"
+                }`}
+              ></div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Meal Log Modal */}
       <MealLogModal
