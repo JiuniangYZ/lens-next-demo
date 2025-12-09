@@ -7,6 +7,7 @@ import { useAuth0 } from '@auth0/auth0-react';
 // const clientId = "YOUR_CLIENT_ID";
 // const domain = process.env.NEXT_PUBLIC_AUTH0_DOMAIN;
 // const clientId = process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID;
+const audience = process.env.NEXT_PUBLIC_AUTH0_AUDIENCE; // API 标识符，用于获取 JWT 格式的 token
 
 // 内部组件：负责登录和显示 Token
 const TokenPrinter = () => {
@@ -18,7 +19,8 @@ const TokenPrinter = () => {
       // 获取原始 JWT Token
       const accessToken = await getAccessTokenSilently({
         authorizationParams: {
-            scope: "openid profile email offline_access" // 关键：请求 offline_access
+          audience: audience, // 必须指定 audience 才能获取 JWT 格式的 token
+          scope: "openid profile email offline_access" // 关键：请求 offline_access
         }
       });
       setToken(accessToken);
