@@ -1,12 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import NutritionDetailModal from "../nutrition-detail-modal";
+import ProgressDetailModal from "../progress-detail-modal";
 
 interface DashboardPageProps {
   onNavigate?: (screen: string) => void;
 }
 
 export default function DashboardPage({ onNavigate }: DashboardPageProps) {
+  // Modal state
+  const [activeModal, setActiveModal] = useState<"nutrition" | "progress" | null>(null);
+
+  // Prevent background scroll when modal is open
+  useEffect(() => {
+    if (activeModal) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [activeModal]);
+
   // Dummy data
   const [todayData] = useState({
     calories: {
@@ -64,280 +81,199 @@ export default function DashboardPage({ onNavigate }: DashboardPageProps) {
       </div>
 
       {/* Content */}
-      <div className="px-6 py-6 space-y-6 pb-8">
-        {/* Calorie Card - Hero */}
-        <div className="bg-gradient-to-br from-orange-400 to-red-500 rounded-3xl p-6 shadow-xl text-white">
-          <div className="flex items-start justify-between mb-4">
+      <div className="px-6 py-6 space-y-4 pb-8">
+        {/* Card 1: Today's Info - Calories & Nutrition */}
+        <div
+          onClick={() => setActiveModal("nutrition")}
+          className="bg-white rounded-2xl p-5 shadow-lg border border-gray-200 cursor-pointer hover:shadow-xl transition-all active:scale-[0.98]"
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <div className="text-2xl">🔥</div>
+            <h2 className="text-lg font-bold text-gray-900">Today</h2>
+          </div>
+
+          {/* Calories Summary */}
+          <div className="flex items-center justify-between mb-4 bg-gradient-to-r from-orange-50 to-red-50 rounded-xl p-4">
             <div>
-              <h2 className="text-lg font-semibold opacity-90">Today&apos;s Calories</h2>
-              <p className="text-sm opacity-75 mt-1">
-                {todayData.calories.remaining} cal remaining
-              </p>
-            </div>
-            <div className="text-4xl">🔥</div>
-          </div>
-
-          {/* Circular Progress */}
-          <div className="flex items-center justify-center my-6">
-            <div className="relative w-48 h-48">
-              {/* Background Circle */}
-              <svg className="w-full h-full transform -rotate-90">
-                <circle
-                  cx="96"
-                  cy="96"
-                  r="88"
-                  stroke="rgba(255,255,255,0.2)"
-                  strokeWidth="16"
-                  fill="none"
-                />
-                {/* Progress Circle */}
-                <circle
-                  cx="96"
-                  cy="96"
-                  r="88"
-                  stroke="white"
-                  strokeWidth="16"
-                  fill="none"
-                  strokeDasharray={`${2 * Math.PI * 88}`}
-                  strokeDashoffset={`${2 * Math.PI * 88 * (1 - caloriePercentage / 100)}`}
-                  strokeLinecap="round"
-                  className="transition-all duration-500"
-                />
-              </svg>
-              {/* Center Text */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <div className="text-4xl font-bold">{todayData.calories.consumed}</div>
-                <div className="text-sm opacity-75">/ {todayData.calories.target}</div>
-                <div className="text-xs opacity-60 mt-1">calories</div>
+              <div className="text-2xl font-bold text-gray-900">
+                {todayData.calories.consumed}
+                <span className="text-sm text-gray-500 font-normal">/{todayData.calories.target}</span>
               </div>
+              <div className="text-xs text-gray-500">cal</div>
+            </div>
+            <div className="text-right">
+              <div className="text-lg font-bold text-orange-600">{todayData.calories.remaining}</div>
+              <div className="text-xs text-gray-500">left</div>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-gray-900">{Math.round(caloriePercentage)}%</div>
             </div>
           </div>
 
-          {/* Quick Stats */}
-          <div className="grid grid-cols-3 gap-3 mt-4">
-            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3 text-center">
-              <div className="text-2xl font-bold">{Math.round(caloriePercentage)}%</div>
-              <div className="text-xs opacity-75 mt-1">Progress</div>
-            </div>
-            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3 text-center">
-              <div className="text-2xl font-bold">3</div>
-              <div className="text-xs opacity-75 mt-1">Meals</div>
-            </div>
-            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3 text-center">
-              <div className="text-2xl font-bold">
-                {todayData.water.current}/{todayData.water.target}
+          {/* Macros - Compact */}
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            <div className="text-center">
+              <div className="text-xs text-gray-500 mb-1">💪 P</div>
+              <div className="text-sm font-bold text-green-600">
+                {todayData.macros.protein.current}/{todayData.macros.protein.target}
               </div>
-              <div className="text-xs opacity-75 mt-1">Water</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Macros Card */}
-        <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-900">Macronutrients</h2>
-            <div className="text-2xl">🍽️</div>
-          </div>
-
-          <div className="space-y-4">
-            {/* Protein */}
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-semibold text-gray-700">Protein</span>
-                <span className="text-sm font-bold text-green-600">
-                  {todayData.macros.protein.current}g / {todayData.macros.protein.target}g
-                </span>
-              </div>
-              <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden mt-1">
                 <div
-                  className="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full transition-all duration-500"
+                  className="h-full bg-green-500 rounded-full"
                   style={{ width: `${Math.min(proteinPercentage, 100)}%` }}
                 />
               </div>
             </div>
-
-            {/* Carbs */}
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-semibold text-gray-700">Carbs</span>
-                <span className="text-sm font-bold text-blue-600">
-                  {todayData.macros.carbs.current}g / {todayData.macros.carbs.target}g
-                </span>
+            <div className="text-center">
+              <div className="text-xs text-gray-500 mb-1">🍚 C</div>
+              <div className="text-sm font-bold text-blue-600">
+                {todayData.macros.carbs.current}/{todayData.macros.carbs.target}
               </div>
-              <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden mt-1">
                 <div
-                  className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full transition-all duration-500"
+                  className="h-full bg-blue-500 rounded-full"
                   style={{ width: `${Math.min(carbsPercentage, 100)}%` }}
                 />
               </div>
             </div>
-
-            {/* Fat */}
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-semibold text-gray-700">Fat</span>
-                <span className="text-sm font-bold text-orange-600">
-                  {todayData.macros.fat.current}g / {todayData.macros.fat.target}g
-                </span>
+            <div className="text-center">
+              <div className="text-xs text-gray-500 mb-1">🥑 F</div>
+              <div className="text-sm font-bold text-orange-600">
+                {todayData.macros.fat.current}/{todayData.macros.fat.target}
               </div>
-              <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden mt-1">
                 <div
-                  className="h-full bg-gradient-to-r from-orange-400 to-orange-600 rounded-full transition-all duration-500"
+                  className="h-full bg-orange-500 rounded-full"
                   style={{ width: `${Math.min(fatPercentage, 100)}%` }}
                 />
               </div>
             </div>
+          </div>
 
-            {/* Water */}
-            <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-semibold text-gray-700">💧 Water</span>
-                <span className="text-sm font-bold text-cyan-600">
-                  {todayData.water.current} / {todayData.water.target} glasses
-                </span>
-              </div>
-              <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-cyan-400 to-cyan-600 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(waterPercentage, 100)}%` }}
-                />
-              </div>
+          {/* Water */}
+          <div className="flex items-center justify-between bg-cyan-50 rounded-xl p-3">
+            <span className="text-lg">💧</span>
+            <div className="text-sm font-bold text-cyan-600">
+              {todayData.water.current}/{todayData.water.target}
             </div>
+            <div className="flex-1 mx-3 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-cyan-500 rounded-full"
+                style={{ width: `${Math.min(waterPercentage, 100)}%` }}
+              />
+            </div>
+            <div className="text-xs text-gray-500">glasses</div>
           </div>
         </div>
 
-        {/* Workout Summary Card */}
-        <div className="bg-gradient-to-br from-purple-500 to-blue-600 rounded-3xl p-6 shadow-xl text-white">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <h2 className="text-lg font-semibold opacity-90">Weekly Workouts</h2>
-              <p className="text-sm opacity-75 mt-1">
-                {totalWorkouts} sessions • {totalDuration} mins
-              </p>
-            </div>
-            <div className="text-4xl">💪</div>
+        {/* Card 2: Progress & Weight */}
+        <div
+          onClick={() => setActiveModal("progress")}
+          className="bg-white rounded-2xl p-5 shadow-lg border border-gray-200 cursor-pointer hover:shadow-xl transition-all active:scale-[0.98]"
+        >
+          <div className="flex items-center gap-2 mb-4">
+            <div className="text-2xl">⚖️</div>
+            <h2 className="text-lg font-bold text-gray-900">Progress</h2>
           </div>
 
-          {/* Weekly Calendar */}
-          <div className="grid grid-cols-7 gap-2 mb-4">
-            {weeklyWorkouts.map((workout, index) => (
-              <div key={index} className="text-center">
-                <div className="text-xs opacity-75 mb-2">{workout.day}</div>
-                <div
-                  className={`w-full aspect-square rounded-xl flex items-center justify-center text-xs font-bold ${
-                    workout.completed
-                      ? "bg-white text-purple-600"
-                      : "bg-white/20 text-white/50"
+          {/* Weight Info - Compact */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex-1">
+              <div className="text-3xl font-bold text-gray-900">
+                {weightData.current}
+                <span className="text-lg text-gray-500 ml-1">{weightData.unit}</span>
+              </div>
+              <div className="flex items-center gap-1 mt-1">
+                <span
+                  className={`text-xs font-semibold ${
+                    weightData.trend < 0 ? "text-green-600" : "text-red-600"
                   }`}
                 >
-                  {workout.completed ? "✓" : "·"}
-                </div>
-                {workout.completed && (
-                  <div className="text-xs opacity-75 mt-1">{workout.duration}m</div>
+                  {weightData.trend > 0 ? "+" : ""}
+                  {weightData.trend}
+                </span>
+                <span className="text-xs text-gray-500">kg/wk</span>
+                {weightData.trend < 0 ? (
+                  <span className="text-green-600 text-sm">↓</span>
+                ) : (
+                  <span className="text-red-600 text-sm">↑</span>
                 )}
               </div>
-            ))}
-          </div>
+            </div>
 
-          {/* Stats Row */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3 text-center">
-              <div className="text-2xl font-bold">{totalWorkouts}/7</div>
-              <div className="text-xs opacity-75 mt-1">Days</div>
-            </div>
-            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3 text-center">
-              <div className="text-2xl font-bold">{totalDuration}</div>
-              <div className="text-xs opacity-75 mt-1">Minutes</div>
-            </div>
-            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3 text-center">
-              <div className="text-2xl font-bold">{Math.round(totalDuration / totalWorkouts)}</div>
-              <div className="text-xs opacity-75 mt-1">Avg/Day</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Weight Tracking Card */}
-        <div className="bg-white rounded-3xl p-6 shadow-lg border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-900">Weight Progress</h2>
-            <div className="text-2xl">⚖️</div>
-          </div>
-
-          {/* Current Weight - Large Display */}
-          <div className="text-center mb-6">
-            <div className="text-5xl font-bold text-gray-900 mb-2">
-              {weightData.current}
-              <span className="text-2xl text-gray-500 ml-2">{weightData.unit}</span>
-            </div>
-            <div className="flex items-center justify-center gap-2">
-              <span
-                className={`text-sm font-semibold ${
-                  weightData.trend < 0 ? "text-green-600" : "text-red-600"
-                }`}
-              >
-                {weightData.trend > 0 ? "+" : ""}
-                {weightData.trend} kg this week
-              </span>
-              {weightData.trend < 0 ? (
-                <span className="text-green-600">↓</span>
-              ) : (
-                <span className="text-red-600">↑</span>
-              )}
-            </div>
-          </div>
-
-          {/* Progress Stats */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-gray-50 rounded-xl p-3 text-center">
-              <div className="text-xs text-gray-600 mb-1">Start</div>
-              <div className="text-lg font-bold text-gray-900">
-                {weightData.start}
-                <span className="text-xs text-gray-500 ml-1">{weightData.unit}</span>
+            {/* Stats Grid */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-gray-50 rounded-lg px-3 py-2 text-center">
+                <div className="text-xs text-gray-500">Start</div>
+                <div className="text-sm font-bold text-gray-900">{weightData.start}</div>
               </div>
-            </div>
-            <div className="bg-gray-50 rounded-xl p-3 text-center">
-              <div className="text-xs text-gray-600 mb-1">Lost</div>
-              <div className="text-lg font-bold text-green-600">
-                {(weightData.start - weightData.current).toFixed(1)}
-                <span className="text-xs text-gray-500 ml-1">{weightData.unit}</span>
+              <div className="bg-green-50 rounded-lg px-3 py-2 text-center">
+                <div className="text-xs text-gray-500">-{(weightData.start - weightData.current).toFixed(1)}</div>
+                <div className="text-sm font-bold text-green-600">Lost</div>
               </div>
-            </div>
-            <div className="bg-gray-50 rounded-xl p-3 text-center">
-              <div className="text-xs text-gray-600 mb-1">Target</div>
-              <div className="text-lg font-bold text-blue-600">
-                {weightData.target}
-                <span className="text-xs text-gray-500 ml-1">{weightData.unit}</span>
+              <div className="bg-blue-50 rounded-lg px-3 py-2 text-center">
+                <div className="text-xs text-gray-500">Goal</div>
+                <div className="text-sm font-bold text-blue-600">{weightData.target}</div>
               </div>
             </div>
           </div>
 
-          {/* Progress to Goal */}
-          <div className="mt-4">
+          {/* Progress Bar */}
+          <div className="mb-4">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-xs font-semibold text-gray-600">Progress to Goal</span>
-              <span className="text-xs font-bold text-gray-900">
+              <span className="text-xs text-gray-500">→ Goal</span>
+              <span className="text-sm font-bold text-gray-900">
                 {Math.round(
-                  ((weightData.start - weightData.current) / (weightData.start - weightData.target)) *
-                    100
-                )}
-                %
+                  ((weightData.start - weightData.current) / (weightData.start - weightData.target)) * 100
+                )}%
               </span>
             </div>
             <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-green-400 to-blue-600 rounded-full transition-all duration-500"
+                className="h-full bg-gradient-to-r from-green-400 to-blue-600 rounded-full"
                 style={{
                   width: `${Math.min(
-                    ((weightData.start - weightData.current) / (weightData.start - weightData.target)) *
-                      100,
+                    ((weightData.start - weightData.current) / (weightData.start - weightData.target)) * 100,
                     100
                   )}%`,
                 }}
               />
             </div>
           </div>
+
+          {/* Summary Stats */}
+          <div className="flex items-center justify-between bg-purple-50 rounded-xl p-3">
+            <div className="text-center flex-1">
+              <div className="text-xs text-gray-500 mb-1">💪</div>
+              <div className="text-lg font-bold text-purple-600">{totalWorkouts}/7</div>
+            </div>
+            <div className="w-px h-8 bg-gray-300"></div>
+            <div className="text-center flex-1">
+              <div className="text-xs text-gray-500 mb-1">⏱️</div>
+              <div className="text-lg font-bold text-blue-600">{totalDuration}m</div>
+            </div>
+            <div className="w-px h-8 bg-gray-300"></div>
+            <div className="text-center flex-1">
+              <div className="text-xs text-gray-500 mb-1">🔥</div>
+              <div className="text-lg font-bold text-orange-600">5d</div>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* Modals */}
+      <NutritionDetailModal
+        isOpen={activeModal === "nutrition"}
+        onClose={() => setActiveModal(null)}
+        todayData={todayData}
+      />
+
+      <ProgressDetailModal
+        isOpen={activeModal === "progress"}
+        onClose={() => setActiveModal(null)}
+        weightData={weightData}
+        weeklyWorkouts={weeklyWorkouts}
+      />
     </div>
   );
 }
