@@ -3,6 +3,34 @@
 import { useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
+// 生成随机字符串
+function generateRandomString(length: number): string {
+  const array = new Uint8Array(length);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('').substring(0, length);
+}
+
+// Base64 URL 编码
+function base64URLEncode(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
+
+// 生成 code_challenge
+async function generateCodeChallenge(codeVerifier: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(codeVerifier);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return base64URLEncode(hash);
+}
+
 function AuthPageContent() {
   const searchParams = useSearchParams();
   
@@ -27,25 +55,50 @@ function AuthPageContent() {
       return;
     }
 
-    // 构建 Auth0 登录 URL
-    const auth0Url = new URL(`https://${auth0Domain}/authorize`);
-    auth0Url.searchParams.set('response_type', 'code');
-    auth0Url.searchParams.set('client_id', auth0ClientId);
-    auth0Url.searchParams.set('redirect_uri', `${window.location.origin}/expo-callback`);
-    auth0Url.searchParams.set('scope', 'openid profile email offline_access');
-    
-    // 如果配置了 audience，添加它以获取 JWT token
-    if (auth0Audience) {
-      auth0Url.searchParams.set('audience', auth0Audience);
-    }
-    
-    // 将 state 和 returnUrl 编码到 state 参数中
-    auth0Url.searchParams.set('state', JSON.stringify({ state, returnUrl }));
+    // 在服务端生成 PKCE 参数
+    const initAuth = async () => {
+      // 1. 生成 code_verifier (128 个字符的随机字符串)
+      const codeVerifier = generateRandomString(128);
+      
+      // 2. 生成 code_challenge
+      const codeChallenge = await generateCodeChallenge(codeVerifier);
+      
+      console.log('Generated PKCE parameters on server side', {
+        codeVerifierLength: codeVerifier.length,
+        codeChallengeLength: codeChallenge.length
+      });
 
-    console.log('Redirecting to Auth0:', auth0Url.toString());
+      // 3. 构建 Auth0 登录 URL
+      const auth0Url = new URL(`https://${auth0Domain}/authorize`);
+      auth0Url.searchParams.set('response_type', 'code');
+      auth0Url.searchParams.set('client_id', auth0ClientId);
+      auth0Url.searchParams.set('redirect_uri', `${window.location.origin}/expo-callback`);
+      auth0Url.searchParams.set('scope', 'openid profile email offline_access');
+      
+      // 如果配置了 audience，添加它以获取 JWT token
+      if (auth0Audience) {
+        auth0Url.searchParams.set('audience', auth0Audience);
+      }
+      
+      // 4. PKCE: 添加 code_challenge
+      auth0Url.searchParams.set('code_challenge', codeChallenge);
+      auth0Url.searchParams.set('code_challenge_method', 'S256');
+      console.log('Using server-generated PKCE flow');
+      
+      // 5. 将 state, returnUrl 和 codeVerifier 编码到 state 参数中
+      auth0Url.searchParams.set('state', JSON.stringify({ 
+        state, 
+        returnUrl,
+        codeVerifier // 保存 code_verifier 用于后续 token 交换
+      }));
 
-    // 重定向到 Auth0
-    window.location.href = auth0Url.toString();
+      console.log('Redirecting to Auth0...');
+
+      // 6. 重定向到 Auth0
+      window.location.href = auth0Url.toString();
+    };
+
+    initAuth();
   }, [returnUrl, state, auth0Domain, auth0ClientId, auth0Audience]);
 
   // 显示错误信息（如果有）
@@ -63,7 +116,10 @@ function AuthPageContent() {
         <h2 style={{ color: 'red' }}>❌ Error</h2>
         <p>Missing required parameters (returnUrl or state)</p>
         <p style={{ marginTop: '20px', color: '#666' }}>
-          Expected URL format: /expo-auth?returnUrl=exp://&state=xxx
+          Expected URL format: /expo-auth?returnUrl=exp://&amp;state=xxx
+        </p>
+        <p style={{ marginTop: '10px', color: '#888', fontSize: '14px' }}>
+          PKCE parameters will be generated automatically on the server.
         </p>
       </div>
     );

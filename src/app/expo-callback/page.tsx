@@ -31,11 +31,13 @@ function CallbackPageContent() {
         // 解析 state
         let state: string;
         let returnUrl: string;
+        let codeVerifier: string | undefined;
         
         try {
           const parsed = JSON.parse(stateParam);
           state = parsed.state;
           returnUrl = parsed.returnUrl;
+          codeVerifier = parsed.codeVerifier; // PKCE: 提取 code_verifier
         } catch {
           throw new Error('Invalid state parameter');
         }
@@ -46,11 +48,20 @@ function CallbackPageContent() {
 
         setStatus('Exchanging code for tokens...');
 
+        console.log('Exchanging code for tokens...', {
+          hasCode: !!code,
+          hasCodeVerifier: !!codeVerifier,
+          usingPKCE: !!codeVerifier
+        });
+
         // 使用 code 交换 token (调用后端 API 路由)
         const response = await fetch('/api/expo-auth/token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code })
+          body: JSON.stringify({ 
+            code,
+            code_verifier: codeVerifier // PKCE: 传递 code_verifier
+          })
         });
 
         if (!response.ok) {

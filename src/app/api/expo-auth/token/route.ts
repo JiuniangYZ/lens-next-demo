@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { code } = body;
+    const { code, code_verifier } = body;
 
     if (!code) {
       return NextResponse.json(
@@ -14,17 +14,27 @@ export async function POST(request: NextRequest) {
 
     const auth0Domain = process.env.NEXT_PUBLIC_AUTH0_DOMAIN;
     const auth0ClientId = process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID;
-    const auth0ClientSecret = process.env.AUTH0_CLIENT_SECRET;
+    const auth0ClientSecret = process.env.AUTH0_CLIENT_SECRET; // Optional for PKCE
     const auth0Audience = process.env.NEXT_PUBLIC_AUTH0_AUDIENCE;
 
-    if (!auth0Domain || !auth0ClientId || !auth0ClientSecret) {
+    // PKCE flow: code_verifier is required if no client_secret
+    const usingPKCE = !!code_verifier;
+    
+    if (!auth0Domain || !auth0ClientId) {
       console.error('Missing Auth0 configuration:', {
         hasDomain: !!auth0Domain,
-        hasClientId: !!auth0ClientId,
-        hasClientSecret: !!auth0ClientSecret
+        hasClientId: !!auth0ClientId
       });
       return NextResponse.json(
         { error: 'Server configuration error' },
+        { status: 500 }
+      );
+    }
+
+    if (!usingPKCE && !auth0ClientSecret) {
+      console.error('Either code_verifier (PKCE) or client_secret is required');
+      return NextResponse.json(
+        { error: 'Server configuration error: No authentication method available' },
         { status: 500 }
       );
     }
@@ -35,17 +45,27 @@ export async function POST(request: NextRequest) {
     console.log('Exchanging code for tokens...', {
       domain: auth0Domain,
       redirectUri,
-      hasAudience: !!auth0Audience
+      hasAudience: !!auth0Audience,
+      usingPKCE,
+      hasClientSecret: !!auth0ClientSecret
     });
 
     // 交换 code 获取 token
     const tokenRequestBody: Record<string, string> = {
       grant_type: 'authorization_code',
       client_id: auth0ClientId,
-      client_secret: auth0ClientSecret,
       code,
       redirect_uri: redirectUri
     };
+
+    // PKCE flow: use code_verifier instead of client_secret
+    if (usingPKCE) {
+      tokenRequestBody.code_verifier = code_verifier;
+      console.log('Using PKCE flow with code_verifier');
+    } else if (auth0ClientSecret) {
+      tokenRequestBody.client_secret = auth0ClientSecret;
+      console.log('Using client_secret flow');
+    }
 
     // 如果配置了 audience，添加它
     if (auth0Audience) {
