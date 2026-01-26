@@ -3,6 +3,7 @@
 import { useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import getEnv from "@/utils/env";
+import { EProject } from "@/types";
 
 // 生成随机字符串
 function generateRandomString(length: number): string {
@@ -31,6 +32,8 @@ async function generateCodeChallenge(codeVerifier: string): Promise<string> {
   return base64URLEncode(hash);
 }
 
+
+
 function AuthPageContent() {
   const searchParams = useSearchParams();
   const {
@@ -42,12 +45,15 @@ function AuthPageContent() {
     NEXT_PUBLIC_AUTH0_VITA_DOMAIN: auth0VitaDomain,
   } = getEnv();
 
+
   const returnUrl = searchParams.get("returnUrl");
   const state = searchParams.get("state");
   const audience = searchParams.get("audience") ?? "";
 
-  const auth0ClientId = audience === auth0PeakoAudience ? auth0PeakoClientId : audience === auth0VitaAudience ? auth0VitaClientId : '';
-  const auth0Domain = audience === auth0PeakoAudience ? auth0PeakoDomain : audience === auth0VitaAudience ? auth0VitaDomain : '';
+  const project = audience === auth0PeakoAudience ? EProject.PEAKO : audience === auth0VitaAudience ? EProject.VITA : EProject.UNKNOWN;
+
+  const auth0ClientId = project === EProject.PEAKO ? auth0PeakoClientId : project === EProject.VITA ? auth0VitaClientId : '';
+  const auth0Domain = project === EProject.PEAKO ? auth0PeakoDomain : project === EProject.VITA ? auth0VitaDomain : '';
 
   useEffect(() => {
     // 检查参数和配置
@@ -96,13 +102,14 @@ function AuthPageContent() {
       auth0Url.searchParams.set("code_challenge_method", "S256");
       console.log("Using server-generated PKCE flow");
 
-      // 5. 将 state, returnUrl 和 codeVerifier 编码到 state 参数中
+      // 5. 将 state, returnUrl, codeVerifier 和 audience 编码到 state 参数中
       auth0Url.searchParams.set(
         "state",
         JSON.stringify({
           state,
           returnUrl,
           codeVerifier, // 保存 code_verifier 用于后续 token 交换
+          audience, // 保存 audience 用于后续判断项目
         })
       );
 

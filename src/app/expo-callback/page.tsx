@@ -32,12 +32,14 @@ function CallbackPageContent() {
         let state: string;
         let returnUrl: string;
         let codeVerifier: string | undefined;
+        let audience: string | undefined;
         
         try {
           const parsed = JSON.parse(stateParam);
           state = parsed.state;
           returnUrl = parsed.returnUrl;
           codeVerifier = parsed.codeVerifier; // PKCE: 提取 code_verifier
+          audience = parsed.audience; // 提取 audience 用于判断项目
         } catch {
           throw new Error('Invalid state parameter');
         }
@@ -51,6 +53,7 @@ function CallbackPageContent() {
         console.log('Exchanging code for tokens...', {
           hasCode: !!code,
           hasCodeVerifier: !!codeVerifier,
+          hasAudience: !!audience,
           usingPKCE: !!codeVerifier
         });
 
@@ -60,7 +63,8 @@ function CallbackPageContent() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             code,
-            code_verifier: codeVerifier // PKCE: 传递 code_verifier
+            code_verifier: codeVerifier, // PKCE: 传递 code_verifier
+            audience // 传递 audience 用于选择对应的 Auth0 配置
           })
         });
 

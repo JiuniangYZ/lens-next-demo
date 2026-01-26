@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { code, code_verifier } = body;
+    const { code, code_verifier, audience } = body;
 
     if (!code) {
       return NextResponse.json(
@@ -12,10 +12,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const auth0Domain = process.env.NEXT_PUBLIC_AUTH0_DOMAIN;
-    const auth0ClientId = process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID;
-    const auth0ClientSecret = process.env.AUTH0_CLIENT_SECRET; // Optional for PKCE
-    const auth0Audience = process.env.NEXT_PUBLIC_AUTH0_AUDIENCE;
+    if (!audience) {
+      return NextResponse.json(
+        { error: 'Audience is required' },
+        { status: 400 }
+      );
+    }
+
+    // 根据 audience 判断项目并选择对应的 Auth0 配置
+    const isPeako = audience === process.env.NEXT_PUBLIC_AUTH0_PEAKO_AUDIENCE;
+    const isVita = audience === process.env.NEXT_PUBLIC_AUTH0_VITA_AUDIENCE;
+
+    if (!isPeako && !isVita) {
+      console.error('Invalid audience:', audience);
+      return NextResponse.json(
+        { error: 'Invalid audience' },
+        { status: 400 }
+      );
+    }
+
+    // 根据项目选择对应的 Auth0 配置
+    const auth0Domain = isPeako 
+      ? process.env.NEXT_PUBLIC_AUTH0_PEAKO_DOMAIN 
+      : process.env.NEXT_PUBLIC_AUTH0_VITA_DOMAIN;
+    const auth0ClientId = isPeako 
+      ? process.env.NEXT_PUBLIC_AUTH0_PEAKO_CLIENT_ID 
+      : process.env.NEXT_PUBLIC_AUTH0_VITA_CLIENT_ID;
+    const auth0ClientSecret = isPeako 
+      ? process.env.AUTH0_PEAKO_CLIENT_SECRET 
+      : process.env.AUTH0_VITA_CLIENT_SECRET;
+    const auth0Audience = audience;
 
     // PKCE flow: code_verifier is required if no client_secret
     const usingPKCE = !!code_verifier;
@@ -23,7 +49,8 @@ export async function POST(request: NextRequest) {
     if (!auth0Domain || !auth0ClientId) {
       console.error('Missing Auth0 configuration:', {
         hasDomain: !!auth0Domain,
-        hasClientId: !!auth0ClientId
+        hasClientId: !!auth0ClientId,
+        project: isPeako ? 'PEAKO' : 'VITA'
       });
       return NextResponse.json(
         { error: 'Server configuration error' },
@@ -43,9 +70,10 @@ export async function POST(request: NextRequest) {
     const redirectUri = `${process.env.NEXT_PUBLIC_BASE_URL || request.nextUrl.origin}/expo-callback`;
 
     console.log('Exchanging code for tokens...', {
+      project: isPeako ? 'PEAKO' : 'VITA',
       domain: auth0Domain,
       redirectUri,
-      hasAudience: !!auth0Audience,
+      audience: auth0Audience,
       usingPKCE,
       hasClientSecret: !!auth0ClientSecret
     });
