@@ -34,21 +34,22 @@ async function generateCodeChallenge(codeVerifier: string): Promise<string> {
 function AuthPageContent() {
   const searchParams = useSearchParams();
   const {
-    NEXT_PUBLIC_AUTH0_DOMAIN: auth0Domain,
-    NEXT_PUBLIC_AUTH0_CLIENT_ID: auth0ClientId,
-    NEXT_PUBLIC_AUTH0_AUDIENCE: auth0Audience,
-    NEXT_PUBLIC_ANOTHER_AUTH0_AUDIENCE: anotherAuth0Audience,
+    NEXT_PUBLIC_AUTH0_PEAKO_DOMAIN: auth0PeakoDomain,
+    NEXT_PUBLIC_AUTH0_PEAKO_CLIENT_ID: auth0PeakoClientId,
+    NEXT_PUBLIC_AUTH0_PEAKO_AUDIENCE: auth0PeakoAudience,
+    NEXT_PUBLIC_AUTH0_VITA_AUDIENCE: auth0VitaAudience,
+    NEXT_PUBLIC_AUTH0_VITA_CLIENT_ID: auth0VitaClientId,
+    NEXT_PUBLIC_AUTH0_VITA_DOMAIN: auth0VitaDomain,
   } = getEnv();
 
   const returnUrl = searchParams.get("returnUrl");
   const state = searchParams.get("state");
   const audience = searchParams.get("audience") ?? "";
 
+  const auth0ClientId = audience === auth0PeakoAudience ? auth0PeakoClientId : audience === auth0VitaAudience ? auth0VitaClientId : '';
+  const auth0Domain = audience === auth0PeakoAudience ? auth0PeakoDomain : audience === auth0VitaAudience ? auth0VitaDomain : '';
+
   useEffect(() => {
-    if (![auth0Audience, anotherAuth0Audience].includes(audience)) {
-      console.error("Invalid audience", audience);
-      return;
-    }
     // 检查参数和配置
     if (!returnUrl || !state) {
       console.error("Missing required parameters (returnUrl or state)");
@@ -110,19 +111,16 @@ function AuthPageContent() {
       // 6. 重定向到 Auth0
       window.location.href = auth0Url.toString();
     };
-
     initAuth();
   }, [
+    audience,
     returnUrl,
     state,
-    anotherAuth0Audience,
-    auth0Domain,
     auth0ClientId,
-    auth0Audience,
-    audience,
+    auth0Domain,
   ]);
 
-  if (![auth0Audience, anotherAuth0Audience].includes(audience)) {
+  if (![auth0PeakoAudience, auth0VitaAudience].includes(audience)) {
     console.error("Invalid audience");
     return (
       <div style={{ padding: "20px", fontFamily: "monospace" }}>
